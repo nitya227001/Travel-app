@@ -3,22 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VoyageOS Travel Planner</title>
+    <title>VoyageOS Travel Experience Engine</title>
     <link rel="preconnect" href="https://images.unsplash.com" />
-    <link rel="stylesheet" href="styles.css?v=2" />
+    <link rel="stylesheet" href="styles.css?v=3" />
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar" aria-label="Trip preferences">
+      <aside class="sidebar" aria-label="Trip controls">
         <div class="brand">
           <div class="brand-mark">VO</div>
           <div>
             <h1>VoyageOS</h1>
-            <p>Adaptive trip planning</p>
+            <p>AI travel experience engine</p>
           </div>
         </div>
 
         <form class="planner-form" id="plannerForm">
+          <label class="field field-wide">
+            <span>Ask the concierge</span>
+            <textarea
+              id="tripPrompt"
+              name="tripPrompt"
+              rows="4"
+              spellcheck="true"
+            >Plan a 6-day cultural trip to Japan for two under $2500 with vegan options, lower-carbon routes, and no red-eye flights.</textarea>
+          </label>
+          <button class="primary-action field-wide" type="button" id="parsePromptBtn">Generate from prompt</button>
+
           <label class="field">
             <span>Destination</span>
             <select id="destination" name="destination">
@@ -26,6 +37,24 @@
               <option value="lisbon">Lisbon, Portugal</option>
               <option value="reykjavik">Reykjavik, Iceland</option>
               <option value="marrakesh">Marrakesh, Morocco</option>
+              <option value="delhi">Delhi weekend, India</option>
+              <option value="alps">Swiss Alps, Switzerland</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Traveler profile</span>
+            <select id="persona" name="persona">
+              <option value="couple">Couple</option>
+              <option value="solo">Solo traveler</option>
+              <option value="family">Family with kids</option>
+              <option value="friends">Friend group</option>
+              <option value="business">Business traveler</option>
+              <option value="luxury">Luxury traveler</option>
+              <option value="backpacker">Backpacker</option>
+              <option value="nomad">Digital nomad</option>
+              <option value="senior">Senior citizens</option>
+              <option value="accessibility">Accessibility-focused</option>
             </select>
           </label>
 
@@ -36,14 +65,20 @@
             </label>
             <label class="field">
               <span>Travelers</span>
-              <input id="travelers" name="travelers" type="number" min="1" max="8" value="2" />
+              <input id="travelers" name="travelers" type="number" min="1" max="12" value="2" />
             </label>
           </div>
 
           <label class="field">
-            <span>Budget per person</span>
-            <input id="budget" name="budget" type="range" min="900" max="4200" step="100" value="2200" />
-            <strong id="budgetValue">$2,200</strong>
+            <span>Total budget</span>
+            <input id="budget" name="budget" type="range" min="600" max="9000" step="100" value="2500" />
+            <strong id="budgetValue">$2,500</strong>
+          </label>
+
+          <label class="field">
+            <span>Emergency reserve</span>
+            <input id="reserve" name="reserve" type="range" min="0" max="1800" step="100" value="400" />
+            <strong id="reserveValue">$400</strong>
           </label>
 
           <label class="field">
@@ -53,19 +88,41 @@
           </label>
 
           <fieldset class="segments">
-            <legend>Trip style</legend>
-            <label><input type="radio" name="style" value="culture" checked /> Culture</label>
+            <legend>Travel style</legend>
+            <label><input type="radio" name="style" value="culture" checked /> Cultural</label>
             <label><input type="radio" name="style" value="food" /> Food</label>
             <label><input type="radio" name="style" value="nature" /> Nature</label>
-            <label><input type="radio" name="style" value="work" /> Work-friendly</label>
+            <label><input type="radio" name="style" value="adventure" /> Adventure</label>
+            <label><input type="radio" name="style" value="luxury" /> Luxury</label>
+            <label><input type="radio" name="style" value="work" /> Work</label>
+          </fieldset>
+
+          <fieldset class="segments">
+            <legend>Stay preference</legend>
+            <label><input type="radio" name="stay" value="boutique" checked /> Boutique</label>
+            <label><input type="radio" name="stay" value="hotel" /> Hotel</label>
+            <label><input type="radio" name="stay" value="hostel" /> Hostel</label>
+            <label><input type="radio" name="stay" value="resort" /> Resort</label>
+            <label><input type="radio" name="stay" value="villa" /> Villa</label>
+            <label><input type="radio" name="stay" value="homestay" /> Homestay</label>
           </fieldset>
 
           <fieldset class="checks">
-            <legend>Constraints</legend>
+            <legend>Constraints and safety</legend>
             <label><input id="noRedEye" type="checkbox" checked /> Avoid red-eye flights</label>
             <label><input id="accessible" type="checkbox" /> Step-free priority</label>
-            <label><input id="lowCarbon" type="checkbox" checked /> Lower carbon route</label>
-            <label><input id="foodLimits" type="checkbox" /> Dietary filters</label>
+            <label><input id="lowCarbon" type="checkbox" checked /> Lower-carbon route</label>
+            <label><input id="foodLimits" type="checkbox" checked /> Dietary filters</label>
+            <label><input id="lowRisk" type="checkbox" checked /> Low-risk areas</label>
+            <label><input id="offlinePack" type="checkbox" /> Offline-ready pack</label>
+          </fieldset>
+
+          <fieldset class="checks">
+            <legend>Food preference</legend>
+            <label><input id="vegetarian" type="checkbox" /> Vegetarian</label>
+            <label><input id="vegan" type="checkbox" checked /> Vegan</label>
+            <label><input id="halal" type="checkbox" /> Halal</label>
+            <label><input id="glutenFree" type="checkbox" /> Gluten-free</label>
           </fieldset>
 
           <button class="primary-action" type="button" id="optimizeBtn">Optimize plan</button>
@@ -75,12 +132,12 @@
       <main class="workspace">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Planning board</p>
+            <p class="eyebrow">Experience command center</p>
             <h2 id="tripTitle">Kyoto in 6 days</h2>
           </div>
           <div class="status-pill" id="syncStatus">
             <span></span>
-            Live updates on
+            Live intelligence on
           </div>
         </header>
 
@@ -89,12 +146,13 @@
             <div class="visual-copy">
               <p id="seasonTag">Late spring shoulder season</p>
               <h3 id="visualTitle">Temple mornings, market lunches, quiet rail hops.</h3>
+              <div class="visual-tags" id="visualTags"></div>
             </div>
           </article>
 
           <article class="score-panel">
             <div class="panel-heading">
-              <h3>Plan fit</h3>
+              <h3>Plan intelligence</h3>
               <strong id="fitScore">91%</strong>
             </div>
             <div class="meter" aria-hidden="true"><span id="fitMeter"></span></div>
@@ -102,13 +160,14 @@
               <div><dt>Budget pressure</dt><dd id="budgetPressure">Comfortable</dd></div>
               <div><dt>Transit load</dt><dd id="transitLoad">4.2 hrs/day</dd></div>
               <div><dt>Risk level</dt><dd id="riskLevel">Low</dd></div>
+              <div><dt>Personalization</dt><dd id="learningScore">Learning</dd></div>
             </dl>
           </article>
 
           <article class="route-panel">
             <div class="panel-heading">
-              <h3>Route choice</h3>
-              <button class="ghost-button" id="swapRouteBtn" type="button">Swap</button>
+              <h3>Route optimizer</h3>
+              <button class="ghost-button" id="swapRouteBtn" type="button">Swap route</button>
             </div>
             <div class="route-line" aria-hidden="true">
               <span></span><i></i><span></span><i></i><span></span>
@@ -118,39 +177,110 @@
           </article>
         </section>
 
-        <section class="content-grid">
-          <article class="itinerary-panel">
-            <div class="panel-heading">
-              <div>
-                <h3>Adaptive itinerary</h3>
-                <p id="itineraryMeta">Built around culture, balanced pace, and lower-carbon routing.</p>
-              </div>
-              <button class="ghost-button" id="rebalanceBtn" type="button">Rebalance</button>
-            </div>
-            <div class="timeline" id="timeline"></div>
+        <section class="mission-grid" aria-label="Engine capabilities">
+          <article class="capability-panel">
+            <h3>Preference engine</h3>
+            <div class="chip-stack" id="preferenceChips"></div>
           </article>
+          <article class="capability-panel">
+            <h3>Constraint solver</h3>
+            <div class="solver-list" id="constraintList"></div>
+          </article>
+          <article class="capability-panel">
+            <h3>Sustainability</h3>
+            <div class="carbon-card">
+              <strong id="carbonScore">42 kg CO2e saved</strong>
+              <span id="carbonDetail">Rail-first routing selected</span>
+            </div>
+          </article>
+        </section>
 
-          <aside class="right-rail" aria-label="Live trip operations">
+        <section class="content-grid">
+          <div class="main-stack">
+            <article class="itinerary-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Dynamic itinerary</h3>
+                  <p id="itineraryMeta">Built around culture, balanced pace, and lower-carbon routing.</p>
+                </div>
+                <button class="ghost-button" id="rebalanceBtn" type="button">Rebalance</button>
+              </div>
+              <div class="timeline" id="timeline"></div>
+            </article>
+
+            <article class="experience-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Local discovery</h3>
+                  <p>Hidden gems, food, events, backups, and crowd-aware alternatives.</p>
+                </div>
+              </div>
+              <div class="experience-grid" id="experienceGrid"></div>
+            </article>
+
+            <article class="architecture-panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Production architecture</h3>
+                  <p>How this prototype maps to a global, real-time travel platform.</p>
+                </div>
+              </div>
+              <div class="architecture-flow" id="architectureFlow"></div>
+            </article>
+          </div>
+
+          <aside class="right-rail" aria-label="Live travel operations">
             <article class="alert-panel">
               <div class="panel-heading">
-                <h3>Live signals</h3>
+                <h3>Live intelligence</h3>
                 <span id="lastUpdated">just now</span>
               </div>
               <div class="signal-stack" id="signalStack"></div>
             </article>
 
+            <article class="replan-panel">
+              <div class="panel-heading">
+                <h3>Self-healing plan</h3>
+                <button class="ghost-button" id="simulateDisruptionBtn" type="button">Simulate</button>
+              </div>
+              <div class="replan-flow" id="replanFlow"></div>
+            </article>
+
             <article class="booking-panel">
               <div class="panel-heading">
-                <h3>Bookings</h3>
+                <h3>Budget intelligence</h3>
                 <strong id="bookingTotal">$3,840</strong>
               </div>
+              <div class="budget-meter">
+                <span id="budgetMeter"></span>
+              </div>
               <div class="booking-list" id="bookingList"></div>
+            </article>
+
+            <article class="concierge-panel">
+              <div class="panel-heading">
+                <h3>AI concierge</h3>
+                <button class="ghost-button" id="askConciergeBtn" type="button">Ask</button>
+              </div>
+              <div class="chat-log" id="chatLog"></div>
+              <label class="field compact-field">
+                <span>Message</span>
+                <input id="conciergeInput" type="text" value="What if my flight is delayed?" />
+              </label>
+            </article>
+
+            <article class="learning-panel">
+              <div class="panel-heading">
+                <h3>Feedback loop</h3>
+                <button class="ghost-button" id="likePlanBtn" type="button">Liked</button>
+              </div>
+              <div class="learning-list" id="learningList"></div>
             </article>
           </aside>
         </section>
       </main>
     </div>
 
-    <script src="app.js?v=2"></script>
+    <script src="app.js?v=3"></script>
   </body>
 </html>
