@@ -3,9 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://images.unsplash.com data:; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'self'; object-src 'none'"
+    />
     <title>VoyageOS Travel Experience Engine</title>
-    <link rel="preconnect" href="https://images.unsplash.com" />
-    <link rel="stylesheet" href="styles.css?v=3" />
+    <link rel="stylesheet" href="styles.css?v=4" />
   </head>
   <body>
     <div class="app-shell">
@@ -72,19 +75,19 @@
           <label class="field">
             <span>Total budget</span>
             <input id="budget" name="budget" type="range" min="600" max="9000" step="100" value="2500" />
-            <strong id="budgetValue">$2,500</strong>
+            <output id="budgetValue" for="budget">$2,500</output>
           </label>
 
           <label class="field">
             <span>Emergency reserve</span>
             <input id="reserve" name="reserve" type="range" min="0" max="1800" step="100" value="400" />
-            <strong id="reserveValue">$400</strong>
+            <output id="reserveValue" for="reserve">$400</output>
           </label>
 
           <label class="field">
             <span>Daily pace</span>
             <input id="pace" name="pace" type="range" min="1" max="5" step="1" value="3" />
-            <strong id="paceValue">Balanced</strong>
+            <output id="paceValue" for="pace">Balanced</output>
           </label>
 
           <fieldset class="segments">
@@ -135,14 +138,20 @@
             <p class="eyebrow">Experience command center</p>
             <h2 id="tripTitle">Kyoto in 6 days</h2>
           </div>
-          <div class="status-pill" id="syncStatus">
+          <div class="status-pill" id="syncStatus" role="status" aria-live="polite">
             <span></span>
-            Live intelligence on
+            <b>Live intelligence on</b>
           </div>
         </header>
 
         <section class="overview-grid" aria-label="Trip overview">
-          <article class="destination-visual" id="destinationVisual">
+          <article
+            class="destination-visual"
+            id="destinationVisual"
+            data-destination="kyoto"
+            role="img"
+            aria-label="Kyoto travel scene"
+          >
             <div class="visual-copy">
               <p id="seasonTag">Late spring shoulder season</p>
               <h3 id="visualTitle">Temple mornings, market lunches, quiet rail hops.</h3>
@@ -155,7 +164,16 @@
               <h3>Plan intelligence</h3>
               <strong id="fitScore">91%</strong>
             </div>
-            <div class="meter" aria-hidden="true"><span id="fitMeter"></span></div>
+            <div
+              class="meter"
+              role="progressbar"
+              aria-label="Plan fit score"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="91"
+            >
+              <span id="fitMeter"></span>
+            </div>
             <dl class="score-list">
               <div><dt>Budget pressure</dt><dd id="budgetPressure">Comfortable</dd></div>
               <div><dt>Transit load</dt><dd id="transitLoad">4.2 hrs/day</dd></div>
@@ -205,7 +223,7 @@
                 </div>
                 <button class="ghost-button" id="rebalanceBtn" type="button">Rebalance</button>
               </div>
-              <div class="timeline" id="timeline"></div>
+              <div class="timeline" id="timeline" role="list"></div>
             </article>
 
             <article class="experience-panel">
@@ -235,13 +253,13 @@
                 <h3>Live intelligence</h3>
                 <span id="lastUpdated">just now</span>
               </div>
-              <div class="signal-stack" id="signalStack"></div>
+              <div class="signal-stack" id="signalStack" aria-live="polite"></div>
             </article>
 
             <article class="replan-panel">
               <div class="panel-heading">
                 <h3>Self-healing plan</h3>
-                <button class="ghost-button" id="simulateDisruptionBtn" type="button">Simulate</button>
+                <button class="ghost-button" id="simulateDisruptionBtn" type="button" aria-label="Simulate a travel disruption">Simulate</button>
               </div>
               <div class="replan-flow" id="replanFlow"></div>
             </article>
@@ -251,7 +269,14 @@
                 <h3>Budget intelligence</h3>
                 <strong id="bookingTotal">$3,840</strong>
               </div>
-              <div class="budget-meter">
+              <div
+                class="budget-meter"
+                role="progressbar"
+                aria-label="Budget used"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="0"
+              >
                 <span id="budgetMeter"></span>
               </div>
               <div class="booking-list" id="bookingList"></div>
@@ -260,19 +285,19 @@
             <article class="concierge-panel">
               <div class="panel-heading">
                 <h3>AI concierge</h3>
-                <button class="ghost-button" id="askConciergeBtn" type="button">Ask</button>
+                <button class="ghost-button" id="askConciergeBtn" type="button" aria-label="Ask the AI concierge">Ask</button>
               </div>
               <div class="chat-log" id="chatLog"></div>
               <label class="field compact-field">
                 <span>Message</span>
-                <input id="conciergeInput" type="text" value="What if my flight is delayed?" />
+                <input id="conciergeInput" type="text" maxlength="220" value="What if my flight is delayed?" />
               </label>
             </article>
 
             <article class="learning-panel">
               <div class="panel-heading">
                 <h3>Feedback loop</h3>
-                <button class="ghost-button" id="likePlanBtn" type="button">Liked</button>
+                <button class="ghost-button" id="likePlanBtn" type="button" aria-label="Mark this plan as liked">Liked</button>
               </div>
               <div class="learning-list" id="learningList"></div>
             </article>
@@ -281,6 +306,6 @@
       </main>
     </div>
 
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=4"></script>
   </body>
 </html>

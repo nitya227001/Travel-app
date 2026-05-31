@@ -4,7 +4,6 @@ const destinations = {
     country: "Japan",
     days: 6,
     season: "Late spring shoulder season",
-    image: "url('https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1600&q=80')",
     visual: "Temple mornings, market lunches, quiet rail hops.",
     currency: "JPY",
     carbonBase: 138,
@@ -38,7 +37,6 @@ const destinations = {
     country: "Portugal",
     days: 5,
     season: "Warm evenings and Atlantic breeze",
-    image: "url('https://images.unsplash.com/photo-1548707309-dcebeab9ea9b?auto=format&fit=crop&w=1600&q=80')",
     visual: "Viewpoints, tiled streets, seafood, and easy day trips.",
     currency: "EUR",
     carbonBase: 96,
@@ -72,7 +70,6 @@ const destinations = {
     country: "Iceland",
     days: 7,
     season: "Long daylight and volatile weather",
-    image: "url('https://images.unsplash.com/photo-1504829857797-ddff29c27927?auto=format&fit=crop&w=1600&q=80')",
     visual: "Geothermal pools, ring-road segments, and weather-aware routing.",
     currency: "ISK",
     carbonBase: 184,
@@ -106,7 +103,6 @@ const destinations = {
     country: "Morocco",
     days: 6,
     season: "Dry heat, vivid markets, cool courtyards",
-    image: "url('https://images.unsplash.com/photo-1548018560-c7196548e84d?auto=format&fit=crop&w=1600&q=80')",
     visual: "Riads, gardens, souks, and desert-edge excursions.",
     currency: "MAD",
     carbonBase: 104,
@@ -140,7 +136,6 @@ const destinations = {
     country: "India",
     days: 3,
     season: "Weekend food, heritage, and neighborhood hopping",
-    image: "url('https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=1600&q=80')",
     visual: "Short-haul planning for culture, food, shopping, and low-friction transfers.",
     currency: "INR",
     carbonBase: 48,
@@ -174,7 +169,6 @@ const destinations = {
     country: "Switzerland",
     days: 6,
     season: "Clear trails, lake towns, and mountain rail connections",
-    image: "url('https://images.unsplash.com/photo-1531366936337-7c912a4589a7?auto=format&fit=crop&w=1600&q=80')",
     visual: "Mountain rail, scenic bases, weather-aware hikes, and premium recovery time.",
     currency: "CHF",
     carbonBase: 128,
@@ -321,19 +315,29 @@ const architectureNodes = [
 ];
 
 const paceLabels = ["Very light", "Easy", "Balanced", "Active", "Packed"];
+const foodPreferenceLabels = {
+  vegetarian: "Vegetarian",
+  vegan: "Vegan",
+  halal: "Halal",
+  glutenFree: "Gluten-free",
+};
 
 let routeIndex = 0;
 let signalCursor = 0;
 let rebalanceOffset = 0;
 let disruptionIndex = 0;
 let learningLikes = 2;
+let renderQueued = false;
+let statusTimer = 0;
 
 const form = document.querySelector("#plannerForm");
 const destinationSelect = document.querySelector("#destination");
 const personaSelect = document.querySelector("#persona");
 const budgetInput = document.querySelector("#budget");
-const reserveInput = document.querySelector("#reserve");
-const paceInput = document.querySelector("#pace");
+const travelersInput = document.querySelector("#travelers");
+const datesInput = document.querySelector("#dates");
+const tripPromptInput = document.querySelector("#tripPrompt");
+const conciergeInput = document.querySelector("#conciergeInput");
 const budgetValue = document.querySelector("#budgetValue");
 const reserveValue = document.querySelector("#reserveValue");
 const paceValue = document.querySelector("#paceValue");
@@ -344,14 +348,55 @@ const rebalanceBtn = document.querySelector("#rebalanceBtn");
 const simulateDisruptionBtn = document.querySelector("#simulateDisruptionBtn");
 const askConciergeBtn = document.querySelector("#askConciergeBtn");
 const likePlanBtn = document.querySelector("#likePlanBtn");
+const destinationVisual = document.querySelector("#destinationVisual");
+const syncStatus = document.querySelector("#syncStatus");
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function textNode(value) {
+  return document.createTextNode(String(value));
+}
+
+function element(tag, options = {}, children = []) {
+  const node = document.createElement(tag);
+
+  if (options.className) node.className = options.className;
+  if (options.text !== undefined) node.textContent = String(options.text);
+  if (options.dataset) {
+    Object.entries(options.dataset).forEach(([key, value]) => {
+      node.dataset[key] = value;
+    });
+  }
+  if (options.attrs) {
+    Object.entries(options.attrs).forEach(([key, value]) => {
+      node.setAttribute(key, String(value));
+    });
+  }
+
+  children.forEach((child) => node.append(child instanceof Node ? child : textNode(child)));
+  return node;
+}
+
+function replaceChildren(selector, children) {
+  document.querySelector(selector).replaceChildren(...children);
+}
+
+function renderTags(selector, tags) {
+  replaceChildren(
+    selector,
+    tags.map((tag) => element("span", { text: tag })),
+  );
+}
+
+function setText(selector, value) {
+  document.querySelector(selector).textContent = String(value);
+}
+
+function setProgress(selector, value) {
+  const progress = document.querySelector(selector);
+  progress.setAttribute("aria-valuenow", String(clamp(value, 0, 100)));
 }
 
 function currency(value) {
@@ -363,7 +408,15 @@ function currency(value) {
 }
 
 function checkbox(id) {
-  return document.querySelector(`#${id}`).checked;
+  const input = document.getElementById(id);
+  return Boolean(input?.checked);
+}
+
+function setChecked(id, checked) {
+  const input = document.getElementById(id);
+  if (input) {
+    input.checked = checked;
+  }
 }
 
 function checkedValues(ids) {
@@ -371,7 +424,9 @@ function checkedValues(ids) {
 }
 
 function setRadio(name, value) {
-  const radio = document.querySelector(`input[name="${name}"][value="${value}"]`);
+  const group = form.elements[name];
+  const controls = group ? Array.from(typeof group.length === "number" ? group : [group]) : [];
+  const radio = controls.find((input) => input.value === value);
   if (radio) {
     radio.checked = true;
   }
@@ -379,16 +434,21 @@ function setRadio(name, value) {
 
 function getState() {
   const data = new FormData(form);
+  const destination = destinations[data.get("destination")] ? data.get("destination") : "kyoto";
+  const persona = personaRules[data.get("persona")] ? data.get("persona") : "couple";
+  const style = destinations[destination].activities[data.get("style")] ? data.get("style") : "culture";
+  const stay = stayModifiers[data.get("stay")] ? data.get("stay") : "boutique";
+
   return {
-    destination: data.get("destination"),
-    persona: data.get("persona"),
+    destination,
+    persona,
     dates: data.get("dates") || "Flexible dates",
-    travelers: Number(data.get("travelers")) || 1,
-    budget: Number(data.get("budget")),
-    reserve: Number(data.get("reserve")),
-    pace: Number(data.get("pace")),
-    style: data.get("style"),
-    stay: data.get("stay"),
+    travelers: clamp(Number(data.get("travelers")) || 1, 1, 12),
+    budget: clamp(Number(data.get("budget")) || 2500, 600, 9000),
+    reserve: clamp(Number(data.get("reserve")) || 0, 0, 1800),
+    pace: clamp(Number(data.get("pace")) || 3, 1, 5),
+    style,
+    stay,
     noRedEye: checkbox("noRedEye"),
     accessible: checkbox("accessible"),
     lowCarbon: checkbox("lowCarbon"),
@@ -403,7 +463,7 @@ function getState() {
 }
 
 function inferPrompt() {
-  const prompt = document.querySelector("#tripPrompt").value.toLowerCase();
+  const prompt = tripPromptInput.value.slice(0, 1000).toLowerCase();
   const destinationMap = [
     ["japan", "kyoto"],
     ["kyoto", "kyoto"],
@@ -469,22 +529,22 @@ function inferPrompt() {
   if (persona) personaSelect.value = persona;
   if (style) setRadio("style", style);
   if (stay) setRadio("stay", stay);
-  if (budget) budgetInput.value = Math.min(9000, Math.max(600, Number(budget.replaceAll(",", ""))));
-  if (days) document.querySelector("#dates").value = `${days} flexible days`;
+  if (budget) budgetInput.value = clamp(Number(budget.replaceAll(",", "")), 600, 9000);
+  if (days) datesInput.value = `${clamp(Number(days), 2, 21)} flexible days`;
 
-  document.querySelector("#vegan").checked = prompt.includes("vegan") || document.querySelector("#vegan").checked;
-  document.querySelector("#vegetarian").checked = prompt.includes("vegetarian") || document.querySelector("#vegetarian").checked;
-  document.querySelector("#halal").checked = prompt.includes("halal") || document.querySelector("#halal").checked;
-  document.querySelector("#glutenFree").checked = prompt.includes("gluten") || document.querySelector("#glutenFree").checked;
-  document.querySelector("#accessible").checked = prompt.includes("wheelchair") || prompt.includes("accessible");
-  document.querySelector("#lowCarbon").checked = prompt.includes("carbon") || prompt.includes("train") || prompt.includes("rail");
-  document.querySelector("#noRedEye").checked = !prompt.includes("red-eye") || prompt.includes("no red-eye") || prompt.includes("avoid red-eye");
-  document.querySelector("#lowRisk").checked = prompt.includes("female") || prompt.includes("safe") || document.querySelector("#lowRisk").checked;
+  setChecked("vegan", prompt.includes("vegan") || checkbox("vegan"));
+  setChecked("vegetarian", prompt.includes("vegetarian") || checkbox("vegetarian"));
+  setChecked("halal", prompt.includes("halal") || checkbox("halal"));
+  setChecked("glutenFree", prompt.includes("gluten") || checkbox("glutenFree"));
+  setChecked("accessible", prompt.includes("wheelchair") || prompt.includes("accessible"));
+  setChecked("lowCarbon", prompt.includes("carbon") || prompt.includes("train") || prompt.includes("rail"));
+  setChecked("noRedEye", !prompt.includes("red-eye") || prompt.includes("no red-eye") || prompt.includes("avoid red-eye"));
+  setChecked("lowRisk", prompt.includes("female") || prompt.includes("safe") || checkbox("lowRisk"));
 
   const personaRule = personaRules[personaSelect.value];
-  document.querySelector("#travelers").value = personaRule.travelers;
-  if (personaSelect.value === "family") document.querySelector("#travelers").value = 4;
-  if (personaSelect.value === "friends") document.querySelector("#travelers").value = 5;
+  travelersInput.value = personaRule.travelers;
+  if (personaSelect.value === "family") travelersInput.value = 4;
+  if (personaSelect.value === "friends") travelersInput.value = 5;
 
   routeIndex = 0;
   rebalanceOffset = 0;
@@ -583,74 +643,72 @@ function renderRouteTags(tags, state) {
     state.accessible ? "Step-free" : "Standard access",
     state.lowRisk ? "Safety-first" : "Standard safety",
   ];
-  document.querySelector("#routeTags").innerHTML = [...tags, ...constraints]
-    .map((tag) => `<span>${escapeHtml(tag)}</span>`)
-    .join("");
+  renderTags("#routeTags", [...tags, ...constraints]);
 }
 
 function renderTimeline(days) {
-  document.querySelector("#timeline").innerHTML = days
-    .map(
-      (day, index) => `
-        <section class="day-card">
-          <div class="day-index"><span>Day</span><strong>${index + 1}</strong></div>
-          <div>
-            <h4>${escapeHtml(day.title)}</h4>
-            <p>${escapeHtml(day.body)}</p>
-            <small>${escapeHtml(day.time)}</small>
-          </div>
-          <div class="day-cost"><span>Forecast</span>${currency(day.cost)}</div>
-        </section>
-      `,
-    )
-    .join("");
+  replaceChildren(
+    "#timeline",
+    days.map((day, index) => {
+      const dayIndex = element("div", { className: "day-index" }, [
+        element("span", { text: "Day" }),
+        element("strong", { text: index + 1 }),
+      ]);
+      const dayBody = element("div", {}, [
+        element("h4", { text: day.title }),
+        element("p", { text: day.body }),
+        element("small", { text: day.time }),
+      ]);
+      const cost = element("div", { className: "day-cost" }, [element("span", { text: "Forecast" }), currency(day.cost)]);
+
+      return element("section", { className: "day-card", attrs: { role: "listitem" } }, [dayIndex, dayBody, cost]);
+    }),
+  );
 }
 
 function renderBookings(plan, state) {
   const total = plan.forecast;
   const budgetRatio = Math.min(100, Math.round((total / Math.max(1, state.budget)) * 100));
-  document.querySelector("#bookingTotal").textContent = currency(total);
-  document.querySelector("#budgetMeter").style.width = `${budgetRatio}%`;
-  document.querySelector("#budgetMeter").style.background =
-    budgetRatio > 96 ? "var(--danger)" : budgetRatio > 82 ? "var(--gold)" : "var(--ok)";
-  document.querySelector("#bookingList").innerHTML = bookings
-    .map(([label, detail, share]) => {
+  const budgetMeter = document.querySelector("#budgetMeter");
+  setText("#bookingTotal", currency(total));
+  budgetMeter.style.width = `${budgetRatio}%`;
+  budgetMeter.className = budgetRatio > 96 ? "is-danger" : budgetRatio > 82 ? "is-watch" : "is-ok";
+  setProgress(".budget-meter", budgetRatio);
+  replaceChildren(
+    "#bookingList",
+    bookings.map(([label, detail, share]) => {
       const adjusted = Math.max(80, Math.round(total * share));
-      return `
-        <div class="booking-row">
-          <strong>${escapeHtml(label)}</strong>
-          <span>${currency(adjusted)}</span>
-          <p>${escapeHtml(detail)}</p>
-        </div>
-      `;
-    })
-    .join("");
+      return element("div", { className: "booking-row" }, [
+        element("strong", { text: label }),
+        element("span", { text: currency(adjusted) }),
+        element("p", { text: detail }),
+      ]);
+    }),
+  );
 }
 
 function renderSignals() {
   const stack = [0, 1, 2].map((offset) => liveSignals[(signalCursor + offset) % liveSignals.length]);
-  document.querySelector("#signalStack").innerHTML = stack
-    .map(
-      (signal) => `
-        <section class="alert-card" data-severity="${signal.severity}">
-          <h4>${escapeHtml(signal.title)}</h4>
-          <p>${escapeHtml(signal.body)}</p>
-          <div class="signal-meta">${signal.meta.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
-        </section>
-      `,
-    )
-    .join("");
-  document.querySelector("#lastUpdated").textContent = signalCursor === 0 ? "just now" : `${signalCursor * 12}s ago`;
+  replaceChildren(
+    "#signalStack",
+    stack.map((signal) =>
+      element("section", { className: "alert-card", dataset: { severity: signal.severity } }, [
+        element("h4", { text: signal.title }),
+        element("p", { text: signal.body }),
+        element(
+          "div",
+          { className: "signal-meta" },
+          signal.meta.map((item) => element("span", { text: item })),
+        ),
+      ]),
+    ),
+  );
+  setText("#lastUpdated", signalCursor === 0 ? "just now" : `${signalCursor * 12}s ago`);
 }
 
 function renderPreferences(state, destination) {
   const persona = personaRules[state.persona];
-  const food = checkedValues(["vegetarian", "vegan", "halal", "glutenFree"]).map((id) => ({
-    vegetarian: "Vegetarian",
-    vegan: "Vegan",
-    halal: "Halal",
-    glutenFree: "Gluten-free",
-  })[id]);
+  const food = checkedValues(["vegetarian", "vegan", "halal", "glutenFree"]).map((id) => foodPreferenceLabels[id]);
   const chips = [
     persona.label,
     `${state.travelers} traveler${state.travelers > 1 ? "s" : ""}`,
@@ -659,7 +717,7 @@ function renderPreferences(state, destination) {
     ...food,
     destination.currency,
   ];
-  document.querySelector("#preferenceChips").innerHTML = chips.map((chip) => `<span>${escapeHtml(chip)}</span>`).join("");
+  renderTags("#preferenceChips", chips);
 }
 
 function renderConstraints(state, plan) {
@@ -671,16 +729,15 @@ function renderConstraints(state, plan) {
     [state.foodLimits, "Food constraints"],
     [state.offlinePack, "Network outage"],
   ];
-  document.querySelector("#constraintList").innerHTML = constraints
-    .map(
-      ([met, label]) => `
-        <div>
-          <b>${met ? "OK" : "!"}</b>
-          <span>${escapeHtml(label)} ${met ? "handled" : "needs fallback"}</span>
-        </div>
-      `,
-    )
-    .join("");
+  replaceChildren(
+    "#constraintList",
+    constraints.map(([met, label]) =>
+      element("div", {}, [
+        element("b", { text: met ? "OK" : "!", attrs: { "aria-hidden": "true" } }),
+        element("span", { text: `${label} ${met ? "handled" : "needs fallback"}` }),
+      ]),
+    ),
+  );
 }
 
 function renderExperiences(state, destination, plan) {
@@ -692,91 +749,76 @@ function renderExperiences(state, destination, plan) {
     ["Offline pack", state.offlinePack ? "Maps, vouchers, contacts, and itinerary are staged for download." : "Enable offline pack for outages and border crossings.", "Preparedness"],
     ["Post-trip", "Expense summary, memory prompts, photo grouping, and future recommendations.", "Learning"],
   ];
-  document.querySelector("#experienceGrid").innerHTML = cards
-    .map(
-      ([title, body, tag]) => `
-        <section class="experience-card">
-          <h4>${escapeHtml(title)}</h4>
-          <p>${escapeHtml(body)}</p>
-          <span>${escapeHtml(tag)}</span>
-        </section>
-      `,
-    )
-    .join("");
+  replaceChildren(
+    "#experienceGrid",
+    cards.map(([title, body, tag]) =>
+      element("section", { className: "experience-card" }, [
+        element("h4", { text: title }),
+        element("p", { text: body }),
+        element("span", { text: tag }),
+      ]),
+    ),
+  );
 }
 
 function renderReplan() {
   const scenario = disruptionScenarios[disruptionIndex % disruptionScenarios.length];
-  document.querySelector("#replanFlow").innerHTML = scenario.steps
-    .map(
-      ([label, body], index) => `
-        <div class="replan-step">
-          <b>${index + 1}</b>
-          <div>
-            <strong>${escapeHtml(label)}</strong>
-            <p>${escapeHtml(body)}</p>
-          </div>
-        </div>
-      `,
-    )
-    .join("");
+  replaceChildren(
+    "#replanFlow",
+    scenario.steps.map(([label, body], index) =>
+      element("div", { className: "replan-step" }, [
+        element("b", { text: index + 1, attrs: { "aria-hidden": "true" } }),
+        element("div", {}, [element("strong", { text: label }), element("p", { text: body })]),
+      ]),
+    ),
+  );
 }
 
 function renderArchitecture() {
-  document.querySelector("#architectureFlow").innerHTML = architectureNodes
-    .map(
-      ([title, body]) => `
-        <section class="architecture-node">
-          <h4>${escapeHtml(title)}</h4>
-          <p>${escapeHtml(body)}</p>
-        </section>
-      `,
-    )
-    .join("");
+  replaceChildren(
+    "#architectureFlow",
+    architectureNodes.map(([title, body]) =>
+      element("section", { className: "architecture-node" }, [element("h4", { text: title }), element("p", { text: body })]),
+    ),
+  );
 }
 
 function renderLearning(state, plan) {
   const learningScore = Math.min(99, 71 + learningLikes * 5 + (state.foodLimits ? 4 : 0) + (state.lowRisk ? 3 : 0));
-  document.querySelector("#learningScore").textContent = `${learningScore}%`;
+  setText("#learningScore", `${learningScore}%`);
   const items = [
     ["Preference memory", `Weighted ${state.style} experiences and ${state.stay} stays higher after feedback.`],
     ["Behavior signal", `${learningLikes} positive signal${learningLikes === 1 ? "" : "s"} improved future ranking.`],
     ["Cost model", `${plan.pressure} forecast drives ${plan.budgetDelta < 0 ? "saving alternatives" : "upgrade suggestions"}.`],
   ];
-  document.querySelector("#learningList").innerHTML = items
-    .map(
-      ([label, body]) => `
-        <div class="learning-item">
-          <b>AI</b>
-          <span><strong>${escapeHtml(label)}</strong><br />${escapeHtml(body)}</span>
-        </div>
-      `,
-    )
-    .join("");
+  replaceChildren(
+    "#learningList",
+    items.map(([label, body]) =>
+      element("div", { className: "learning-item" }, [
+        element("b", { text: "AI", attrs: { "aria-hidden": "true" } }),
+        element("span", {}, [element("strong", { text: label }), element("br"), textNode(body)]),
+      ]),
+    ),
+  );
 }
 
 function renderChat(state, destination, plan) {
-  const question = document.querySelector("#conciergeInput").value || "What should I know?";
+  const question = conciergeInput.value.slice(0, 220) || "What should I know?";
   const answer =
     question.toLowerCase().includes("flight") || question.toLowerCase().includes("delay")
       ? `If the flight is delayed, I will move the first timed booking, update check-in, protect ${currency(state.reserve)} reserve, and send an offline arrival plan.`
       : `For ${destination.name}, I recommend keeping ${paceLabels[state.pace - 1].toLowerCase()} pace, ${plan.pressure.toLowerCase()} spend, and a verified backup near each high-priority stop.`;
-  document.querySelector("#chatLog").innerHTML = `
-    <div class="chat-message">
-      <strong>You</strong>
-      <p>${escapeHtml(question)}</p>
-    </div>
-    <div class="chat-message">
-      <strong>VoyageOS</strong>
-      <p>${escapeHtml(answer)}</p>
-    </div>
-  `;
+  replaceChildren("#chatLog", [
+    element("div", { className: "chat-message" }, [element("strong", { text: "You" }), element("p", { text: question })]),
+    element("div", { className: "chat-message" }, [element("strong", { text: "VoyageOS" }), element("p", { text: answer })]),
+  ]);
 }
 
 function showStatus(message) {
-  document.querySelector("#syncStatus").innerHTML = `<span></span> ${escapeHtml(message)}`;
-  window.setTimeout(() => {
-    document.querySelector("#syncStatus").innerHTML = "<span></span> Live intelligence on";
+  window.clearTimeout(statusTimer);
+  syncStatus.replaceChildren(element("span"), element("b", { text: message }));
+  statusTimer = window.setTimeout(() => {
+    syncStatus.replaceChildren(element("span"), element("b", { text: "Live intelligence on" }));
   }, 1800);
 }
 
@@ -790,31 +832,32 @@ function render() {
   budgetValue.textContent = currency(state.budget);
   reserveValue.textContent = currency(state.reserve);
   paceValue.textContent = paceLabels[state.pace - 1];
-  document.documentElement.style.setProperty("--destination-image", destination.image);
+  travelersInput.value = state.travelers;
+  destinationVisual.dataset.destination = state.destination;
+  destinationVisual.setAttribute("aria-label", `${destination.name}, ${destination.country} travel scene`);
 
-  document.querySelector("#tripTitle").textContent = `${destination.name} for ${persona.label.toLowerCase()}`;
-  document.querySelector("#seasonTag").textContent = destination.season;
-  document.querySelector("#visualTitle").textContent = destination.visual;
-  document.querySelector("#visualTags").innerHTML = [
+  setText("#tripTitle", `${destination.name} for ${persona.label.toLowerCase()}`);
+  setText("#seasonTag", destination.season);
+  setText("#visualTitle", destination.visual);
+  renderTags("#visualTags", [
     `${destination.days} day template`,
     `${destination.country}`,
     `${currency(plan.daily)}/day forecast`,
     `${plan.carbonSaved} kg CO2e saved`,
-  ]
-    .map((tag) => `<span>${escapeHtml(tag)}</span>`)
-    .join("");
-  document.querySelector("#fitScore").textContent = `${plan.fit}%`;
+  ]);
+  setText("#fitScore", `${plan.fit}%`);
   document.querySelector("#fitMeter").style.width = `${plan.fit}%`;
-  document.querySelector("#budgetPressure").textContent = plan.pressure;
-  document.querySelector("#transitLoad").textContent = `${plan.transit.toFixed(1)} hrs/day`;
-  document.querySelector("#riskLevel").textContent = plan.risk;
-  document.querySelector("#routeSummary").textContent = plan.route.summary;
-  document.querySelector("#itineraryMeta").textContent =
-    `Optimized for ${state.style}, ${paceLabels[state.pace - 1].toLowerCase()} pace, ${persona.focus}.`;
-  document.querySelector("#carbonScore").textContent = `${plan.carbonSaved} kg CO2e saved`;
-  document.querySelector("#carbonDetail").textContent = state.lowCarbon
-    ? "Lower-carbon routing and clustered activities selected"
-    : "Fastest route selected with emissions tracked";
+  setProgress(".meter", plan.fit);
+  setText("#budgetPressure", plan.pressure);
+  setText("#transitLoad", `${plan.transit.toFixed(1)} hrs/day`);
+  setText("#riskLevel", plan.risk);
+  setText("#routeSummary", plan.route.summary);
+  setText("#itineraryMeta", `Optimized for ${state.style}, ${paceLabels[state.pace - 1].toLowerCase()} pace, ${persona.focus}.`);
+  setText("#carbonScore", `${plan.carbonSaved} kg CO2e saved`);
+  setText(
+    "#carbonDetail",
+    state.lowCarbon ? "Lower-carbon routing and clustered activities selected" : "Fastest route selected with emissions tracked",
+  );
 
   renderRouteTags(plan.route.tags, state);
   renderTimeline(days);
@@ -824,12 +867,23 @@ function render() {
   renderConstraints(state, plan);
   renderExperiences(state, destination, plan);
   renderReplan();
-  renderArchitecture();
   renderLearning(state, plan);
   renderChat(state, destination, plan);
 }
 
-form.addEventListener("input", render);
+function scheduleRender() {
+  if (renderQueued) return;
+  renderQueued = true;
+  window.requestAnimationFrame(() => {
+    renderQueued = false;
+    render();
+  });
+}
+
+form.addEventListener("input", (event) => {
+  if (event.target === tripPromptInput || event.target === conciergeInput) return;
+  scheduleRender();
+});
 
 destinationSelect.addEventListener("change", () => {
   routeIndex = 0;
@@ -839,9 +893,9 @@ destinationSelect.addEventListener("change", () => {
 
 personaSelect.addEventListener("change", () => {
   const persona = personaRules[personaSelect.value];
-  document.querySelector("#travelers").value = persona.travelers;
-  if (personaSelect.value === "accessibility") document.querySelector("#accessible").checked = true;
-  if (personaSelect.value === "solo") document.querySelector("#lowRisk").checked = true;
+  travelersInput.value = persona.travelers;
+  if (personaSelect.value === "accessibility") setChecked("accessible", true);
+  if (personaSelect.value === "solo") setChecked("lowRisk", true);
   if (personaSelect.value === "business") setRadio("style", "work");
   if (personaSelect.value === "luxury") setRadio("style", "luxury");
   if (personaSelect.value === "backpacker") setRadio("stay", "hostel");
@@ -857,13 +911,14 @@ optimizeBtn.addEventListener("click", () => {
 });
 
 swapRouteBtn.addEventListener("click", () => {
-  routeIndex += 1;
+  const destination = destinations[getState().destination];
+  routeIndex = (routeIndex + 1) % destination.routes.length;
   showStatus("Route swapped");
   render();
 });
 
 rebalanceBtn.addEventListener("click", () => {
-  rebalanceOffset += 1;
+  rebalanceOffset = (rebalanceOffset + 1) % 3;
   showStatus("Itinerary rebalanced");
   render();
 });
@@ -888,7 +943,8 @@ likePlanBtn.addEventListener("click", () => {
 
 window.setInterval(() => {
   signalCursor = (signalCursor + 1) % liveSignals.length;
-  renderSignals();
+  render();
 }, 12000);
 
+renderArchitecture();
 render();

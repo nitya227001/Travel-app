@@ -36,12 +36,21 @@ body {
 button,
 input,
 select,
-textarea {
+textarea,
+output {
   font: inherit;
 }
 
 button {
   cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(33, 74, 58, 0.32);
+  outline-offset: 2px;
 }
 
 .app-shell {
@@ -132,6 +141,10 @@ legend {
   color: #3f5047;
   font-size: 0.82rem;
   font-weight: 780;
+}
+
+.field output {
+  font-weight: 830;
 }
 
 .field-wide {
@@ -353,6 +366,30 @@ fieldset {
   background-size: cover;
 }
 
+.destination-visual[data-destination="kyoto"] {
+  --destination-image: url("https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1600&q=80");
+}
+
+.destination-visual[data-destination="lisbon"] {
+  --destination-image: url("https://images.unsplash.com/photo-1548707309-dcebeab9ea9b?auto=format&fit=crop&w=1600&q=80");
+}
+
+.destination-visual[data-destination="reykjavik"] {
+  --destination-image: url("https://images.unsplash.com/photo-1504829857797-ddff29c27927?auto=format&fit=crop&w=1600&q=80");
+}
+
+.destination-visual[data-destination="marrakesh"] {
+  --destination-image: url("https://images.unsplash.com/photo-1548018560-c7196548e84d?auto=format&fit=crop&w=1600&q=80");
+}
+
+.destination-visual[data-destination="delhi"] {
+  --destination-image: url("https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=1600&q=80");
+}
+
+.destination-visual[data-destination="alps"] {
+  --destination-image: url("https://images.unsplash.com/photo-1531366936337-7c912a4589a7?auto=format&fit=crop&w=1600&q=80");
+}
+
 .visual-copy {
   max-width: 640px;
   color: #fff;
@@ -438,6 +475,18 @@ fieldset {
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--moss), var(--gold), var(--clay));
+}
+
+.budget-meter span.is-ok {
+  background: var(--ok);
+}
+
+.budget-meter span.is-watch {
+  background: var(--gold);
+}
+
+.budget-meter span.is-danger {
+  background: var(--danger);
 }
 
 .score-list {
@@ -889,5 +938,16 @@ fieldset {
 
   .day-cost {
     justify-items: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
