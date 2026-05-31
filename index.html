@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VoyageOS Travel Planner</title>
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="stylesheet" href="styles.css?v=2" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Trip preferences">
+        <div class="brand">
+          <div class="brand-mark">VO</div>
+          <div>
+            <h1>VoyageOS</h1>
+            <p>Adaptive trip planning</p>
+          </div>
+        </div>
+
+        <form class="planner-form" id="plannerForm">
+          <label class="field">
+            <span>Destination</span>
+            <select id="destination" name="destination">
+              <option value="kyoto">Kyoto, Japan</option>
+              <option value="lisbon">Lisbon, Portugal</option>
+              <option value="reykjavik">Reykjavik, Iceland</option>
+              <option value="marrakesh">Marrakesh, Morocco</option>
+            </select>
+          </label>
+
+          <div class="field-grid">
+            <label class="field">
+              <span>Dates</span>
+              <input id="dates" name="dates" type="text" value="Jun 18-24" />
+            </label>
+            <label class="field">
+              <span>Travelers</span>
+              <input id="travelers" name="travelers" type="number" min="1" max="8" value="2" />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Budget per person</span>
+            <input id="budget" name="budget" type="range" min="900" max="4200" step="100" value="2200" />
+            <strong id="budgetValue">$2,200</strong>
+          </label>
+
+          <label class="field">
+            <span>Daily pace</span>
+            <input id="pace" name="pace" type="range" min="1" max="5" step="1" value="3" />
+            <strong id="paceValue">Balanced</strong>
+          </label>
+
+          <fieldset class="segments">
+            <legend>Trip style</legend>
+            <label><input type="radio" name="style" value="culture" checked /> Culture</label>
+            <label><input type="radio" name="style" value="food" /> Food</label>
+            <label><input type="radio" name="style" value="nature" /> Nature</label>
+            <label><input type="radio" name="style" value="work" /> Work-friendly</label>
+          </fieldset>
+
+          <fieldset class="checks">
+            <legend>Constraints</legend>
+            <label><input id="noRedEye" type="checkbox" checked /> Avoid red-eye flights</label>
+            <label><input id="accessible" type="checkbox" /> Step-free priority</label>
+            <label><input id="lowCarbon" type="checkbox" checked /> Lower carbon route</label>
+            <label><input id="foodLimits" type="checkbox" /> Dietary filters</label>
+          </fieldset>
+
+          <button class="primary-action" type="button" id="optimizeBtn">Optimize plan</button>
+        </form>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Planning board</p>
+            <h2 id="tripTitle">Kyoto in 6 days</h2>
+          </div>
+          <div class="status-pill" id="syncStatus">
+            <span></span>
+            Live updates on
+          </div>
+        </header>
+
+        <section class="overview-grid" aria-label="Trip overview">
+          <article class="destination-visual" id="destinationVisual">
+            <div class="visual-copy">
+              <p id="seasonTag">Late spring shoulder season</p>
+              <h3 id="visualTitle">Temple mornings, market lunches, quiet rail hops.</h3>
+            </div>
+          </article>
+
+          <article class="score-panel">
+            <div class="panel-heading">
+              <h3>Plan fit</h3>
+              <strong id="fitScore">91%</strong>
+            </div>
+            <div class="meter" aria-hidden="true"><span id="fitMeter"></span></div>
+            <dl class="score-list">
+              <div><dt>Budget pressure</dt><dd id="budgetPressure">Comfortable</dd></div>
+              <div><dt>Transit load</dt><dd id="transitLoad">4.2 hrs/day</dd></div>
+              <div><dt>Risk level</dt><dd id="riskLevel">Low</dd></div>
+            </dl>
+          </article>
+
+          <article class="route-panel">
+            <div class="panel-heading">
+              <h3>Route choice</h3>
+              <button class="ghost-button" id="swapRouteBtn" type="button">Swap</button>
+            </div>
+            <div class="route-line" aria-hidden="true">
+              <span></span><i></i><span></span><i></i><span></span>
+            </div>
+            <p id="routeSummary">Arrive Osaka, rail to Kyoto, depart Tokyo after a one-night stop.</p>
+            <div class="route-tags" id="routeTags"></div>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <article class="itinerary-panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Adaptive itinerary</h3>
+                <p id="itineraryMeta">Built around culture, balanced pace, and lower-carbon routing.</p>
+              </div>
+              <button class="ghost-button" id="rebalanceBtn" type="button">Rebalance</button>
+            </div>
+            <div class="timeline" id="timeline"></div>
+          </article>
+
+          <aside class="right-rail" aria-label="Live trip operations">
+            <article class="alert-panel">
+              <div class="panel-heading">
+                <h3>Live signals</h3>
+                <span id="lastUpdated">just now</span>
+              </div>
+              <div class="signal-stack" id="signalStack"></div>
+            </article>
+
+            <article class="booking-panel">
+              <div class="panel-heading">
+                <h3>Bookings</h3>
+                <strong id="bookingTotal">$3,840</strong>
+              </div>
+              <div class="booking-list" id="bookingList"></div>
+            </article>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js?v=2"></script>
+  </body>
+</html>
